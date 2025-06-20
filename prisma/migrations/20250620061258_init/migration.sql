@@ -1,6 +1,7 @@
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
 
@@ -11,8 +12,8 @@ CREATE TABLE "User" (
 CREATE TABLE "Message" (
     "id" TEXT NOT NULL,
     "content" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "userId" TEXT NOT NULL,
 
     CONSTRAINT "Message_pkey" PRIMARY KEY ("id")
 );
