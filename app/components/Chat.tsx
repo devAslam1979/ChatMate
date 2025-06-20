@@ -7,7 +7,9 @@ export function Chat({ userId }: { userId: number }) {
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:3001");
+    const socket = new WebSocket(import.meta.env.VITE_WS_SERVER_URL);
+
+
     socketRef.current = socket;
 
     socket.onopen = () => {

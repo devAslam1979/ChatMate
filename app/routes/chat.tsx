@@ -33,7 +33,8 @@ export default function ChatStartPage() {
   const [liveConversations, setLiveConversations] = useState(conversations);
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:3001");
+    const ws = new WebSocket(import.meta.env.VITE_WS_SERVER_URL!);
+
     ws.onmessage = (event) => {
       const update = JSON.parse(event.data);
       if (update.type === "new_conversation") {

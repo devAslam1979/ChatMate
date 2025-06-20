@@ -39,7 +39,8 @@ export default function ChatRoom() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:3001");
+    const ws = new WebSocket(import.meta.env.VITE_WS_SERVER_URL!);
+
     setSocket(ws);
 
     ws.onopen = () => {
