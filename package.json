@@ -12,13 +12,11 @@
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",
-    "@remix-run/express": "^2.16.8",
     "@remix-run/node": "^2.16.8",
     "@remix-run/react": "^2.16.8",
     "@remix-run/serve": "^2.16.8",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
-    "express": "^4.21.2",
     "isbot": "^4.1.0",
     "prisma": "^6.10.1",
     "react": "^18.2.0",
