@@ -1,100 +1,141 @@
-import { useEffect, useRef, useState } from "react";
-import type { LoaderFunction } from "@remix-run/node";
+import { useEffect, useState } from "react";
+import { Form, Link, useLoaderData } from "@remix-run/react";
+import type { LoaderFunction, ActionFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { requireUserId } from "../utils/session.server";
 import { db } from "../utils/db.server";
-import { useLoaderData } from "@remix-run/react";
+import { requireUserId } from "../utils/session.server";
 import { Header } from "../components/Header";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const userId = await requireUserId(request);
-  const user = await db.user.findUnique({ where: { id: userId } });
-  if (!user) return redirect("/login");
 
-  const messages = await db.message.findMany({
-    include: { user: true },
-    orderBy: { createdAt: "asc" },
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    include: { conversations: { include: { users: true } } },
   });
 
-  return json({ userId, userEmail: user.email, messages });
+  const otherUsers = await db.user.findMany({
+    where: { id: { not: userId } },
+    select: { id: true, name: true, email: true },
+  });
+
+  return json({ userId, conversations: user?.conversations ?? [], otherUsers });
 };
 
-export default function ChatPage() {
-  const { userId, userEmail, messages } = useLoaderData<typeof loader>();
-  const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [chatMessages, setChatMessages] = useState(messages);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const chatBoxRef = useRef<HTMLDivElement>(null);
+export default function ChatStartPage() {
+  const { conversations, otherUsers, userId } = useLoaderData<typeof loader>();
+  const [liveConversations, setLiveConversations] = useState(conversations);
 
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:3001");
     ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      setChatMessages((prev) => [...prev, msg]);
+      const update = JSON.parse(event.data);
+      if (update.type === "new_conversation") {
+        setLiveConversations((prev) => {
+          const convExists = prev.some((c) => c.id === update.conversationId);
+          if (convExists) return prev;
+          return [
+            {
+              id: update.conversationId,
+              users: update.users,
+            },
+            ...prev,
+          ];
+        });
+      }
     };
-    setSocket(ws);
     return () => ws.close();
   }, []);
 
-  useEffect(() => {
-    chatBoxRef.current?.scrollTo({
-      top: chatBoxRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [chatMessages]);
-
-  const sendMessage = () => {
-    const content = inputRef.current?.value;
-    if (content && socket) {
-      socket.send(JSON.stringify({ content, userId }));
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  };
-
   return (
-    <div className="max-w-3xl mx-auto mt-4">
-      <Header email={userEmail} />
-      <div
-        ref={chatBoxRef}
-        className="h-[500px] overflow-y-auto border rounded-md p-4 bg-gray-50 shadow-inner"
-      >
-        {chatMessages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`mb-3 max-w-[70%] ${
-              msg.userId === userId ? "ml-auto text-right" : "text-left"
-            }`}
-          >
-            <p className="text-sm text-gray-600">
-              {msg.user?.name ?? msg.user?.email ?? "Unknown"}
-            </p>
-            <div
-              className={`inline-block px-4 py-2 rounded-xl ${
-                msg.userId === userId
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-black"
-              }`}
-            >
-              {msg.content}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="max-w-2xl mx-auto py-8 px-4">
+      {/* <Header name={user?.name} email={user.email} /> */}
+      <h1 className="text-3xl font-bold mb-6 text-center">Messages</h1>
 
-      <div className="mt-4 flex gap-2">
-        <input
-          ref={inputRef}
-          className="flex-1 border rounded px-3 py-2 shadow-sm"
-          placeholder="Type your message..."
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-        />
-        <button
-          onClick={sendMessage}
-          className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
-        >
-          Send
-        </button>
-      </div>
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Your Conversations</h2>
+        <ul className="space-y-4">
+          {liveConversations.map((conv) => {
+            const other = conv.users.find((u) => u.id !== userId);
+            return (
+              <li key={conv.id} className="border p-4 rounded-lg shadow">
+                <Link
+                  to={`/conversation/${conv.id}`}
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  Chat with {other?.name || other?.email}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Start New Chat</h2>
+        <ul className="space-y-2">
+          {otherUsers.map((user) => (
+            <li
+              key={user.id}
+              className="flex justify-between items-center bg-gray-100 p-3 rounded-md"
+            >
+              <span>{user.name || user.email}</span>
+              <Form method="post">
+                <input type="hidden" name="receiverId" value={user.id} />
+                <button
+                  className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700"
+                  type="submit"
+                >
+                  Start Chat
+                </button>
+              </Form>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
+
+export const action: ActionFunction = async ({ request }) => {
+  const userId = await requireUserId(request);
+  const formData = await request.formData();
+  const receiverId = formData.get("receiverId") as string;
+
+  const existing = await db.conversation.findFirst({
+    where: {
+      users: {
+        every: {
+          id: { in: [userId, receiverId] },
+        },
+      },
+    },
+  });
+
+  if (existing) {
+    return redirect(`/conversation/${existing.id}`);
+  }
+
+  const newConv = await db.conversation.create({
+    data: {
+      users: {
+        connect: [{ id: userId }, { id: receiverId }],
+      },
+    },
+    include: {
+      users: true,
+    },
+  });
+
+  await fetch("http://localhost:3001/broadcast", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "new_conversation",
+      conversationId: newConv.id,
+      users: newConv.users,
+    }),
+  });
+
+  return redirect(`/conversation/${newConv.id}`);
+};

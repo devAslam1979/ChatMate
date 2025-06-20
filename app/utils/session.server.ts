@@ -29,7 +29,7 @@ export async function requireUserId(request: Request): Promise<string> {
   return userId;
 }
 
-export async function createUserSession(userId: number, redirectTo: string) {
+export async function createUserSession(userId: string, redirectTo: string) {
   const session = await sessionStorage.getSession();
   session.set(USER_SESSION_KEY, userId);
   return redirect(redirectTo, {

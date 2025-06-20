@@ -1,15 +1,31 @@
 import { Form } from "@remix-run/react";
-import { clear } from "console";
 
-export function Header({ email }: { email: string }) {
+interface HeaderProps {
+  name?: string;
+  email: string;
+}
+
+export function Header({ name, email }: HeaderProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-gray-100 shadow">
-      <p className="text-lg font-semibold">Welcome, {email}</p>
-      <Form method="POST" action="/logout">
-        <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
+    <header className="bg-white border-b shadow-sm p-4 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 text-white flex items-center justify-center rounded-full text-lg font-bold">
+          {name ? name[0].toUpperCase() : email[0].toUpperCase()}
+        </div>
+        <div>
+          <p className="font-medium text-gray-800">{name ?? email}</p>
+          <p className="text-sm text-gray-500">{email}</p>
+        </div>
+      </div>
+
+      <Form method="post" action="/logout">
+        <button
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md shadow-sm transition"
+          type="submit"
+        >
           Logout
         </button>
       </Form>
-    </div>
+    </header>
   );
 }
