@@ -1,47 +1,29 @@
-import { ActionFunctionArgs, json, redirect } from "@remix-run/node";
-import { Form } from "@remix-run/react";
-import { PrismaClient } from "@prisma/client";
+import { json, type ActionFunctionArgs } from "@remix-run/node";
+import { useActionData } from "@remix-run/react";
+import { db } from "../utils/db.server";
 import bcrypt from "bcryptjs";
-import { commitSession, getSession } from "../utils/session.server";
+import { createUserSession } from "../utils/session.server";
+import AuthForm from "../components/AuthForm";
 
-const prisma = new PrismaClient();
-
-export async function action({ request }: ActionFunctionArgs) {
+export const action = async ({ request }: ActionFunctionArgs) => {
   const form = await request.formData();
-  const email = form.get("email")?.toString() || "";
-  const password = form.get("password")?.toString() || "";
+  const email = form.get("email")?.toString();
+  const password = form.get("password")?.toString();
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return json({ error: "Invalid credentials" }, { status: 401 });
+  if (!email || !password) {
+    return json({ form: "Both fields are required" }, { status: 400 });
   }
 
-  const session = await getSession(request.headers.get("Cookie"));
-  session.set("userId", user.id);
+  const user = await db.user.findUnique({ where: { email } });
 
-  return redirect("/", {
-    headers: {
-      "Set-Cookie": await commitSession(session),
-    },
-  });
-}
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    return json({ form: "Invalid credentials" }, { status: 401 });
+  }
+  return createUserSession(user.id, "/chat");
+};
 
-export default function Login() {
-  return (
-    <main style={{ padding: 20 }}>
-      <h1>Login</h1>
-      <Form method="post">
-        <input name="email" type="email" placeholder="Email" required />
-        <br />
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          required
-        />
-        <br />
-        <button type="submit">Login</button>
-      </Form>
-    </main>
-  );
+export default function LoginPage() {
+  const errors = useActionData<typeof action>();
+
+  return <AuthForm title="Login" buttonText="Sign In" errors={errors} />;
 }

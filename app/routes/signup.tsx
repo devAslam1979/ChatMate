@@ -1,59 +1,45 @@
-import { ActionFunctionArgs, json, redirect } from "@remix-run/node";
-import { Form } from "@remix-run/react";
-import { PrismaClient } from "@prisma/client";
+import type { ActionFunctionArgs } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
+import { db } from "../utils/db.server";
+import AuthForm from "../components/AuthForm";
 import bcrypt from "bcryptjs";
-import { commitSession, getSession } from "../utils/session.server";
 
-const prisma = new PrismaClient();
-
-export async function action({ request }: ActionFunctionArgs) {
+export const action = async ({ request }: ActionFunctionArgs) => {
   const form = await request.formData();
-  const name = form.get("name")?.toString() || "";
-  const email = form.get("email")?.toString() || "";
+  const name = form.get("name")?.toString().trim() || "";
+  const email = form.get("email")?.toString().trim() || "";
   const password = form.get("password")?.toString() || "";
 
-  if (!name || !email || !password) {
-    return json({ error: "All fields are required" }, { status: 400 });
-  }
+  const errors: { [key: string]: string } = {};
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return json({ error: "User already exists" }, { status: 400 });
-  }
+  if (!name) errors.name = "Name is required";
+  if (!email) errors.email = "Email is required";
+  if (!password) errors.password = "Password is required";
 
+  if (Object.keys(errors).length > 0) {
+    return json(errors, { status: 400 });
+  }
   const hashed = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { name, email, password: hashed },
-  });
+  const existing = await db.user.findUnique({ where: { email } });
+  if (existing) {
+    return json(
+      { email: "A user with this email already exists" },
+      { status: 400 }
+    );
+  }
 
-  const session = await getSession(request.headers.get("Cookie"));
-  session.set("userId", user.id);
-
-  return redirect("/", {
-    headers: {
-      "Set-Cookie": await commitSession(session),
+  // Save the user
+  await db.user.create({
+    data: {
+      name,
+      email,
+      password:hashed, // NOTE: You should hash this in production
     },
   });
-}
+
+  return redirect("/login");
+};
 
 export default function Signup() {
-  return (
-    <main style={{ padding: 20 }}>
-      <h1>Sign Up</h1>
-      <Form method="post">
-        <input name="name" placeholder="Name" required />
-        <br />
-        <input name="email" type="email" placeholder="Email" required />
-        <br />
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          required
-        />
-        <br />
-        <button type="submit">Register</button>
-      </Form>
-    </main>
-  );
+  return <AuthForm title="Sign Up" buttonText="Register" showNameField />;
 }
