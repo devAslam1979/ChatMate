@@ -85,7 +85,14 @@ export default function ChatStartPage() {
               key={user.id}
               className="flex justify-between items-center bg-gray-100 p-3 rounded-md"
             >
-              <span>{user.name || user.email}</span>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-300 text-gray-800 flex items-center justify-center rounded-full text-lg font-semibold">
+                  {user.name ? user.name[0].toUpperCase() : user.email[0].toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800">{user.name ?? user.email}</p>
+                </div>
+              </div>
               <Form method="post">
                 <input type="hidden" name="receiverId" value={user.id} />
                 <button

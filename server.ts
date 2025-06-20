@@ -30,12 +30,10 @@ wss.on("connection", (ws: WebSocket) => {
   ws.on("message", async (data: RawData) => {
     try {
       const msg = JSON.parse(data.toString());
-      console.log("📩 Message received:", msg);
 
       // Join conversation room
       if (msg.type === "join") {
         clientInfo.conversationId = msg.conversationId;
-        console.log(`👥 Client joined conversation ${msg.conversationId}`);
         return;
       }
 
