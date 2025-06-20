@@ -141,7 +141,7 @@ export const action: ActionFunction = async ({ request }) => {
     },
   });
 
-  await fetch("http://localhost:3001/broadcast", {
+  await fetch(`${process.env.API_BASE_URL}/broadcast`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
