@@ -1,13 +1,13 @@
 import { json, LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { getSession } from "../utils/session.server";
+import  {getUserSession}  from "../utils/session.server";
 import { PrismaClient } from "@prisma/client";
 import { Chat } from "../components/Chat";
 
 const prisma = new PrismaClient();
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const session = await getSession(request.headers.get("Cookie"));
+  const session = await getUserSession(request);
   const userId = session.get("userId");
 
   if (!userId) {
