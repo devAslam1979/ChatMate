@@ -4,9 +4,14 @@ import type { LoaderFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { requireUserId } from "../utils/session.server";
 import { db } from "../utils/db.server";
+import { Header } from "../components/Header";
 
 export const loader: LoaderFunction = async ({ request, params }) => {
   const userId = await requireUserId(request);
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    include: { conversations: { include: { users: true } } },
+  });
   const { conversationId } = params;
 
   const conversation = await db.conversation.findUnique({
@@ -22,11 +27,15 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
   if (!conversation) return redirect("/chat");
 
-  return json({ userId, conversation });
+  return json({
+    userId,
+    conversation,
+    user: { name: user?.name, email: user?.email },
+  });
 };
 
 export default function ChatRoom() {
-  const { userId, conversation } = useLoaderData<typeof loader>();
+  const { userId, conversation ,user} = useLoaderData<typeof loader>();
   const [messages, setMessages] = useState(conversation.messages);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatBoxRef = useRef<HTMLDivElement>(null);
@@ -70,7 +79,8 @@ export default function ChatRoom() {
 
   return (
     <div className="max-w-3xl mx-auto py-6 px-4">
-      <h2 className="text-2xl font-semibold text-center mb-4">
+      <Header name={user?.name ?? undefined} email={user.email} />
+      <h2 className="text-2xl font-semibold text-center my-4">
         Chat with {conversation.users.find((u) => u.id !== userId)?.name}
       </h2>
 

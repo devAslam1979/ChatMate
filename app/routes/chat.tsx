@@ -19,11 +19,17 @@ export const loader: LoaderFunction = async ({ request }) => {
     select: { id: true, name: true, email: true },
   });
 
-  return json({ userId, conversations: user?.conversations ?? [], otherUsers });
+  return json({
+    userId,
+    user: { name: user?.name, email: user?.email },
+    conversations: user?.conversations ?? [],
+    otherUsers,
+  });
 };
 
 export default function ChatStartPage() {
-  const { conversations, otherUsers, userId } = useLoaderData<typeof loader>();
+  const { conversations, otherUsers, userId, user } =
+    useLoaderData<typeof loader>();
   const [liveConversations, setLiveConversations] = useState(conversations);
 
   useEffect(() => {
@@ -49,8 +55,8 @@ export default function ChatStartPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4">
-      {/* <Header name={user?.name} email={user.email} /> */}
-      <h1 className="text-3xl font-bold mb-6 text-center">Messages</h1>
+      <Header name={user?.name ?? undefined} email={user.email} />
+      <h1 className="text-3xl font-bold my-6 text-center">Messages</h1>
 
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">Your Conversations</h2>
@@ -60,7 +66,7 @@ export default function ChatStartPage() {
             return (
               <li key={conv.id} className="border p-4 rounded-lg shadow">
                 <Link
-                  to={`/conversation/${conv.id}`}
+                  to={`/conversation/${conv.id}`} // ✅ make sure this matches your route folder
                   className="text-blue-600 hover:underline font-medium"
                 >
                   Chat with {other?.name || other?.email}
